@@ -76,6 +76,10 @@ deux sections.
 - **#16** Menu clic-droit dans la fenêtre kyclient (façon NDI Studio Monitor) :
   fermer + (re)configurer la connexion (IP/port). Recoupe #10/#13.
 - **Étape 3 du plan global** : app **Tauri** (à ne lancer qu'après #13).
+- **Kyclient/kycontroller Linux** — build local bloqué par un accès GitLab
+  manquant au groupe `core` (dépendances natives de kyclient) ; détail et
+  pistes dans `LINUX_INTEGRATION.md`. `build-kycontroller` seul (sans ces
+  deps) est potentiellement débloqué dès maintenant, à tenter en premier.
 
 ## Ordre conseillé
 

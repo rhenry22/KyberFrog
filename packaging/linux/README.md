@@ -7,12 +7,15 @@ remplacer le fichier (pas de désinstallation, pas de droits root).
 
 > **Limite connue** : ce paquet contient uniquement le binaire `kyberfrog`
 > (supervisor + web UI). Il n'embarque **pas** `kycontroller`/`kyavserver`/
-> `kyclient` (binaires du fork Kyber) — leur disponibilité en build Linux
-> n'est pas encore vérifiée. Tant que ce n'est pas confirmé, l'émission/
-> réception réelle ne fonctionnera pas sur Ubuntu ; la web UI, le supervisor
-> et l'édition de config restent testables seuls. Le tray (Win32-only) et
-> Spout (Windows-only) sont déjà en no-op stub sur Linux — cf. `CLAUDE.md`
-> §"Cross-platform module pattern".
+> `kyclient` (binaires du fork Kyber) — un build Linux existe côté CI du fork
+> (`kyclient-build-debian-trixie-x86_64` dans `third_party/kyctl`), mais sa
+> compilation locale est bloquée par un accès GitLab manquant au groupe
+> `core` (dépendances natives de `kyclient`) ; voir le détail et les
+> prochaines pistes dans `LINUX_INTEGRATION.md`. Tant que ce n'est pas
+> débloqué, l'émission/réception réelle ne fonctionnera pas sur Ubuntu ; la
+> web UI, le supervisor et l'édition de config restent testables seuls. Le
+> tray (Win32-only) et Spout (Windows-only) sont déjà en no-op stub sur Linux
+> — cf. `CLAUDE.md` §"Cross-platform module pattern".
 
 ## Packages Ubuntu 24.04 nécessaires
 
