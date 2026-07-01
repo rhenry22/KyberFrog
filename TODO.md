@@ -56,6 +56,16 @@ deux sections.
   `config.rs::kyclient_args`, cas limites de `gen.rs`. (9 tests existent déjà
   dans `shared/`.)
 
+  ## 🧪 Chantier D — Intégration Hardware → #20
+
+- [ ] **D1 — Job `test`** dans `.gitlab-ci.yml` (`cargo test --workspace --locked`
+  dans `$WIN64_IMAGE`, sur MR + `main`, en `needs` d'`installer` → un test rouge
+  bloque le package/release). ✅ fait — **validé localement dans l'image**
+  (`9 passed; 0 failed`, `--locked` OK).
+- [ ] **C2 — Étoffer les tests** : `app.rs` (`resolve_port`, `resolve_viewer_id`),
+  `config.rs::kyclient_args`, cas limites de `gen.rs`. (9 tests existent déjà
+  dans `shared/`.)
+
 ## 📋 Backlog non planifié (reste dans IMPROVEMENTS, pas pour ce tour)
 
 - **#1** Ciblage de sortie par moniteur — *bloqué* par un changement kyclient upstream.

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=KyberFrog
+Comment=Kyber emission/reception orchestrator
+Exec=kyberfrog
+Icon=kyberfrog
+Categories=AudioVideo;Video;Network;
+Terminal=false
