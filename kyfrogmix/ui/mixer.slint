@@ -1,0 +1,289 @@
+import { Slider } from "std-widgets.slint";
+
+export struct LayerData {
+    name: string,
+    source: string,
+    opacity: float,
+    visible: bool,
+}
+
+// Minimum 120x80 logical px per VIDEO_MATRIX_MIXER.md's touch-target rule —
+// pressed feedback uses TouchArea.pressed, never a :hover state (capacitive
+// touchscreens have no hover).
+component TouchButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> active: false;
+    in property <length> btn-width: 120px;
+    in property <length> btn-height: 80px;
+    callback clicked();
+
+    width: btn-width;
+    height: btn-height;
+    border-radius: 8px;
+    border-width: active ? 2px : 0px;
+    border-color: #4caf6e;
+    background: touch.pressed ? #3a3d44 : (active ? #2f4536 : #2b2d33);
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+
+    Text {
+        text: root.label;
+        font-size: 18px;
+        color: #e6e6e6;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+component LayerCard inherits Rectangle {
+    in property <LayerData> layer;
+    in property <int> row-index;
+    callback toggle-mute(int);
+    callback opacity-changed(int, float);
+
+    height: 96px;
+    border-radius: 6px;
+    background: #232529;
+
+    HorizontalLayout {
+        padding: 8px;
+        spacing: 12px;
+
+        TouchButton {
+            label: layer.visible ? "\u{1F441}" : "\u{1F6AB}";
+            clicked => { root.toggle-mute(root.row-index); }
+        }
+
+        Text {
+            text: layer.name;
+            color: #e6e6e6;
+            font-size: 16px;
+            vertical-alignment: center;
+            width: 160px;
+        }
+
+        Text {
+            text: "Src: " + layer.source;
+            color: #c9cbd1;
+            font-size: 14px;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+
+        Slider {
+            width: 180px;
+            height: 48px;
+            minimum: 0;
+            maximum: 1;
+            value: layer.opacity;
+            changed(v) => { root.opacity-changed(root.row-index, v); }
+        }
+
+        TouchButton {
+            label: "FX";
+        }
+    }
+}
+
+component SourceChip inherits Rectangle {
+    in property <string> label;
+    callback clicked();
+
+    width: 130px;
+    height: 56px;
+    border-radius: 6px;
+    background: touch.pressed ? #34363c : #2b2d33;
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+
+    Text {
+        text: root.label;
+        color: #e6e6e6;
+        font-size: 14px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+export component MixerWindow inherits Window {
+    title: "KyberFrog — Mélangeur";
+    width: 1280px;
+    height: 800px;
+    background: #1b1d21;
+
+    in-out property <string> pgm-label: "Regie-1";
+    in-out property <string> pst-label: "Resolume-out";
+    in-out property <float> tbar-position: 0.0;
+    in-out property <string> transition-mode: "mix";
+    in-out property <bool> recording: false;
+    in property <[LayerData]> layers: [];
+    in property <[string]> transition-modes: ["cut", "mix", "wipe", "sting"];
+    in property <[string]> kyber-sources: ["Regie-1", "Regie-2", "Regie-3"];
+    in property <[string]> spout-sources: ["Resolume-out", "App-X"];
+
+    callback set-tbar(float);
+    callback trigger-transition(string);
+    callback cut();
+    callback toggle-mute(int);
+    callback set-opacity(int, float);
+
+    VerticalLayout {
+        spacing: 0px;
+
+        // 1. Barre supérieure
+        Rectangle {
+            height: 52px;
+            background: #232529;
+
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                spacing: 8px;
+
+                TouchButton { label: "ROUTING"; btn-width: 140px; btn-height: 40px; }
+                TouchButton { label: "MÉLANGEUR"; btn-width: 140px; btn-height: 40px; active: true; }
+
+                Rectangle { horizontal-stretch: 1; }
+
+                Rectangle {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 6px;
+                    background: root.recording ? #e5484d : #4a4d54;
+                }
+                Text { text: "REC"; color: #c9cbd1; vertical-alignment: center; }
+
+                TouchButton { label: "⚙"; btn-width: 56px; btn-height: 40px; }
+            }
+        }
+
+        // 2. PGM / PST + transitions
+        HorizontalLayout {
+            height: 240px;
+            padding: 12px;
+            spacing: 12px;
+
+            Rectangle {
+                horizontal-stretch: 1;
+                background: #101114;
+                border-width: 2px;
+                border-color: #3a9a5e;
+                border-radius: 6px;
+                Text {
+                    text: "PGM\n" + root.pgm-label;
+                    color: #e6e6e6;
+                    font-size: 20px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+
+            Text {
+                text: "▶";
+                font-size: 28px;
+                color: #8a8d94;
+                vertical-alignment: center;
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+                background: #101114;
+                border-width: 2px;
+                border-color: #555555;
+                border-radius: 6px;
+                Text {
+                    text: "PST\n" + root.pst-label;
+                    color: #e6e6e6;
+                    font-size: 20px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+
+            VerticalLayout {
+                width: 300px;
+                spacing: 8px;
+
+                HorizontalLayout {
+                    spacing: 4px;
+                    for mode in root.transition-modes: TouchButton {
+                        label: mode;
+                        btn-width: 70px;
+                        btn-height: 56px;
+                        active: root.transition-mode == mode;
+                        clicked => { root.trigger-transition(mode); }
+                    }
+                }
+
+                Slider {
+                    height: 48px;
+                    minimum: 0;
+                    maximum: 1;
+                    value: root.tbar-position;
+                    changed(v) => { root.set-tbar(v); }
+                }
+
+                TouchButton {
+                    label: "CUT →";
+                    btn-width: 300px;
+                    btn-height: 56px;
+                    clicked => { root.cut(); }
+                }
+            }
+        }
+
+        // 3. Pile de layers (haut = dessus), scroll indépendant
+        Text {
+            text: "LAYERS (empilement, haut = dessus)";
+            color: #8a8d94;
+            font-size: 13px;
+            x: 12px;
+        }
+
+        ListView {
+            vertical-stretch: 1;
+            for layer[i] in root.layers: LayerCard {
+                layer: layer;
+                row-index: i;
+                toggle-mute(idx) => { root.toggle-mute(idx); }
+                opacity-changed(idx, v) => { root.set-opacity(idx, v); }
+            }
+        }
+
+        // 4. Sources groupées par type, scroll horizontal par ligne
+        Rectangle {
+            height: 140px;
+            background: #1f2024;
+
+            VerticalLayout {
+                padding: 8px;
+                spacing: 8px;
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text { text: "Kyber"; color: #8a8d94; width: 70px; vertical-alignment: center; }
+                    Flickable {
+                        HorizontalLayout {
+                            spacing: 8px;
+                            for name in root.kyber-sources: SourceChip { label: name; }
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text { text: "Spout"; color: #8a8d94; width: 70px; vertical-alignment: center; }
+                    Flickable {
+                        HorizontalLayout {
+                            spacing: 8px;
+                            for name in root.spout-sources: SourceChip { label: name; }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
