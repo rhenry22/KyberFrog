@@ -7,6 +7,17 @@ export struct LayerData {
     visible: bool,
 }
 
+export struct RoutingRow {
+    source: string,
+    kind: string,
+    routed: [bool],
+}
+
+export struct OutputFormatRow {
+    name: string,
+    format: string,
+}
+
 // Minimum 120x80 logical px per VIDEO_MATRIX_MIXER.md's touch-target rule —
 // pressed feedback uses TouchArea.pressed, never a :hover state (capacitive
 // touchscreens have no hover).
@@ -109,11 +120,248 @@ component SourceChip inherits Rectangle {
     }
 }
 
+// Patchbay cell — kept at the same 120x80 touch-target floor as the rest of
+// the UI even though that makes the grid wide; density is handled by
+// grouping/scroll/filter, never by shrinking tap zones (VIDEO_MATRIX_MIXER.md).
+component RouteCell inherits Rectangle {
+    in property <bool> active;
+    callback clicked();
+
+    width: 120px;
+    height: 80px;
+    border-width: 1px;
+    border-color: #33353b;
+    background: touch.pressed ? #34363c : #1a1b1e;
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+
+    Rectangle {
+        visible: root.active;
+        width: 32px;
+        height: 32px;
+        border-radius: 16px;
+        background: #4caf6e;
+    }
+}
+
+// Petit bouton de suppression — volontairement en-deçà du plancher tactile
+// de 120x80 : c'est une action rare/délibérée sur une grille dense, pas une
+// interaction primaire (cf. VIDEO_MATRIX_MIXER.md, densité gérée par
+// groupement/scroll plutôt que par la taille des zones tactiles courantes).
+component DeleteButton inherits Rectangle {
+    callback clicked();
+    width: 28px;
+    height: 28px;
+    border-radius: 14px;
+    background: touch.pressed ? #5a2a2e : #3a2226;
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+
+    Text {
+        text: "×";
+        color: #e5787d;
+        font-size: 16px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+component RoutingView inherits Rectangle {
+    in property <[string]> destinations;
+    in property <[RoutingRow]> rows;
+    callback toggle-route(int, int);
+    callback add-source();
+    callback remove-source(int);
+    callback add-destination();
+    callback remove-destination(int);
+
+    in-out property <string> filter: "all";
+    property <[string]> filters: ["all", "kyber", "spout", "capture"];
+
+    VerticalLayout {
+        spacing: 0px;
+
+        // en-tête des destinations
+        HorizontalLayout {
+            height: 48px;
+            padding-left: 12px;
+            spacing: 4px;
+
+            Rectangle { width: 160px; }
+            for dest[c] in root.destinations: Rectangle {
+                width: 120px;
+                HorizontalLayout {
+                    alignment: center;
+                    spacing: 4px;
+                    Text {
+                        text: dest;
+                        color: #c9cbd1;
+                        font-size: 12px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        wrap: word-wrap;
+                    }
+                    DeleteButton { clicked => { root.remove-destination(c); } }
+                }
+            }
+            TouchButton {
+                label: "+ Dest";
+                btn-width: 110px;
+                btn-height: 40px;
+                clicked => { root.add-destination(); }
+            }
+        }
+
+        ListView {
+            vertical-stretch: 1;
+            for row[r] in root.rows: Rectangle {
+                height: 84px;
+                visible: root.filter == "all" || row.kind == root.filter;
+
+                HorizontalLayout {
+                    padding-left: 12px;
+                    spacing: 4px;
+
+                    Rectangle {
+                        width: 160px;
+                        HorizontalLayout {
+                            spacing: 4px;
+                            Text {
+                                text: row.source;
+                                color: #e6e6e6;
+                                font-size: 14px;
+                                vertical-alignment: center;
+                                horizontal-stretch: 1;
+                            }
+                            DeleteButton { clicked => { root.remove-source(r); } }
+                        }
+                    }
+
+                    for dest[c] in root.destinations: RouteCell {
+                        active: row.routed[c];
+                        clicked => { root.toggle-route(r, c); }
+                    }
+                }
+            }
+        }
+
+        // ajout d'une source
+        HorizontalLayout {
+            height: 56px;
+            padding: 8px;
+            TouchButton {
+                label: "+ Source";
+                btn-width: 160px;
+                btn-height: 40px;
+                clicked => { root.add-source(); }
+            }
+        }
+
+        // filtres par type de source
+        HorizontalLayout {
+            height: 64px;
+            padding: 8px;
+            spacing: 8px;
+
+            Text { text: "Filtre :"; color: #8a8d94; vertical-alignment: center; }
+            for f in root.filters: TouchButton {
+                label: f;
+                btn-width: 110px;
+                btn-height: 48px;
+                active: root.filter == f;
+                clicked => { root.filter = f; }
+            }
+        }
+    }
+}
+
+// Puce de format tap-to-select — même logique one-tap que SourceChip, avec
+// un état "active" pour marquer le standard actuellement choisi.
+component FormatChip inherits Rectangle {
+    in property <string> label;
+    in property <bool> active: false;
+    callback clicked();
+
+    width: 130px;
+    height: 56px;
+    border-radius: 6px;
+    border-width: active ? 2px : 0px;
+    border-color: #4caf6e;
+    background: touch.pressed ? #34363c : (active ? #2f4536 : #2b2d33);
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+
+    Text {
+        text: root.label;
+        color: #e6e6e6;
+        font-size: 13px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+component OutputFormatCard inherits Rectangle {
+    in property <OutputFormatRow> format-row;
+    in property <int> row-index;
+    in property <[string]> available-formats;
+    callback set-format(int, string);
+
+    height: 120px;
+    border-radius: 6px;
+    background: #232529;
+
+    VerticalLayout {
+        padding: 12px;
+        spacing: 8px;
+
+        HorizontalLayout {
+            Text { text: format-row.name; color: #e6e6e6; font-size: 16px; vertical-alignment: center; }
+            Rectangle { horizontal-stretch: 1; }
+            Text { text: format-row.format; color: #4caf6e; font-size: 16px; vertical-alignment: center; }
+        }
+
+        Flickable {
+            height: 56px;
+            HorizontalLayout {
+                spacing: 8px;
+                for f in root.available-formats: FormatChip {
+                    label: f;
+                    active: f == format-row.format;
+                    clicked => { root.set-format(root.row-index, f); }
+                }
+            }
+        }
+    }
+}
+
+component OutputFormatsView inherits Rectangle {
+    in property <[OutputFormatRow]> rows;
+    in property <[string]> available-formats;
+    callback set-format(int, string);
+
+    ListView {
+        for row[i] in root.rows: OutputFormatCard {
+            format-row: row;
+            row-index: i;
+            available-formats: root.available-formats;
+            set-format(idx, f) => { root.set-format(idx, f); }
+        }
+    }
+}
+
 export component MixerWindow inherits Window {
     title: "KyberFrog — Mélangeur";
-    width: 1280px;
-    height: 800px;
+    width: 1366px;
+    height: 768px;
     background: #1b1d21;
+
+    in-out property <string> current-view: "mixer"; // "mixer" | "routing" | "outputs"
 
     in-out property <string> pgm-label: "Regie-1";
     in-out property <string> pst-label: "Resolume-out";
@@ -125,16 +373,28 @@ export component MixerWindow inherits Window {
     in property <[string]> kyber-sources: ["Regie-1", "Regie-2", "Regie-3"];
     in property <[string]> spout-sources: ["Resolume-out", "App-X"];
 
+    in property <[string]> routing-destinations: [];
+    in property <[RoutingRow]> routing-rows: [];
+
+    in property <[OutputFormatRow]> output-format-rows: [];
+    in property <[string]> output-formats: [];
+
     callback set-tbar(float);
     callback trigger-transition(string);
     callback cut();
     callback toggle-mute(int);
     callback set-opacity(int, float);
+    callback toggle-route(int, int);
+    callback set-output-format(int, string);
+    callback add-routing-source();
+    callback remove-routing-source(int);
+    callback add-routing-destination();
+    callback remove-routing-destination(int);
 
     VerticalLayout {
         spacing: 0px;
 
-        // 1. Barre supérieure
+        // 1. Barre supérieure — commune aux deux vues
         Rectangle {
             height: 52px;
             background: #232529;
@@ -144,8 +404,27 @@ export component MixerWindow inherits Window {
                 padding-right: 12px;
                 spacing: 8px;
 
-                TouchButton { label: "ROUTING"; btn-width: 140px; btn-height: 40px; }
-                TouchButton { label: "MÉLANGEUR"; btn-width: 140px; btn-height: 40px; active: true; }
+                TouchButton {
+                    label: "ROUTING";
+                    btn-width: 140px;
+                    btn-height: 40px;
+                    active: root.current-view == "routing";
+                    clicked => { root.current-view = "routing"; }
+                }
+                TouchButton {
+                    label: "MÉLANGEUR";
+                    btn-width: 140px;
+                    btn-height: 40px;
+                    active: root.current-view == "mixer";
+                    clicked => { root.current-view = "mixer"; }
+                }
+                TouchButton {
+                    label: "SORTIES BM";
+                    btn-width: 140px;
+                    btn-height: 40px;
+                    active: root.current-view == "outputs";
+                    clicked => { root.current-view = "outputs"; }
+                }
 
                 Rectangle { horizontal-stretch: 1; }
 
@@ -161,125 +440,148 @@ export component MixerWindow inherits Window {
             }
         }
 
-        // 2. PGM / PST + transitions
-        HorizontalLayout {
-            height: 240px;
-            padding: 12px;
-            spacing: 12px;
+        if root.current-view == "routing": RoutingView {
+            vertical-stretch: 1;
+            destinations: root.routing-destinations;
+            rows: root.routing-rows;
+            toggle-route(r, c) => { root.toggle-route(r, c); }
+            add-source() => { root.add-routing-source(); }
+            remove-source(i) => { root.remove-routing-source(i); }
+            add-destination() => { root.add-routing-destination(); }
+            remove-destination(i) => { root.remove-routing-destination(i); }
+        }
 
-            Rectangle {
-                horizontal-stretch: 1;
-                background: #101114;
-                border-width: 2px;
-                border-color: #3a9a5e;
-                border-radius: 6px;
-                Text {
-                    text: "PGM\n" + root.pgm-label;
-                    color: #e6e6e6;
-                    font-size: 20px;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                }
-            }
+        if root.current-view == "outputs": OutputFormatsView {
+            vertical-stretch: 1;
+            rows: root.output-format-rows;
+            available-formats: root.output-formats;
+            set-format(i, f) => { root.set-output-format(i, f); }
+        }
 
-            Text {
-                text: "▶";
-                font-size: 28px;
-                color: #8a8d94;
-                vertical-alignment: center;
-            }
+        if root.current-view == "mixer": VerticalLayout {
+            vertical-stretch: 1;
+            spacing: 0px;
 
-            Rectangle {
-                horizontal-stretch: 1;
-                background: #101114;
-                border-width: 2px;
-                border-color: #555555;
-                border-radius: 6px;
-                Text {
-                    text: "PST\n" + root.pst-label;
-                    color: #e6e6e6;
-                    font-size: 20px;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                }
-            }
+            // 2. PGM / PST + transitions
+            HorizontalLayout {
+                height: 240px;
+                padding: 12px;
+                spacing: 12px;
 
-            VerticalLayout {
-                width: 300px;
-                spacing: 8px;
-
-                HorizontalLayout {
-                    spacing: 4px;
-                    for mode in root.transition-modes: TouchButton {
-                        label: mode;
-                        btn-width: 70px;
-                        btn-height: 56px;
-                        active: root.transition-mode == mode;
-                        clicked => { root.trigger-transition(mode); }
+                Rectangle {
+                    horizontal-stretch: 1;
+                    background: #101114;
+                    border-width: 2px;
+                    border-color: #3a9a5e;
+                    border-radius: 6px;
+                    Text {
+                        text: "PGM\n" + root.pgm-label;
+                        color: #e6e6e6;
+                        font-size: 20px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
                     }
                 }
 
-                Slider {
-                    height: 48px;
-                    minimum: 0;
-                    maximum: 1;
-                    value: root.tbar-position;
-                    changed(v) => { root.set-tbar(v); }
+                Text {
+                    text: "▶";
+                    font-size: 28px;
+                    color: #8a8d94;
+                    vertical-alignment: center;
                 }
 
-                TouchButton {
-                    label: "CUT →";
-                    btn-width: 300px;
-                    btn-height: 56px;
-                    clicked => { root.cut(); }
+                Rectangle {
+                    horizontal-stretch: 1;
+                    background: #101114;
+                    border-width: 2px;
+                    border-color: #555555;
+                    border-radius: 6px;
+                    Text {
+                        text: "PST\n" + root.pst-label;
+                        color: #e6e6e6;
+                        font-size: 20px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
                 }
-            }
-        }
 
-        // 3. Pile de layers (haut = dessus), scroll indépendant
-        Text {
-            text: "LAYERS (empilement, haut = dessus)";
-            color: #8a8d94;
-            font-size: 13px;
-            x: 12px;
-        }
-
-        ListView {
-            vertical-stretch: 1;
-            for layer[i] in root.layers: LayerCard {
-                layer: layer;
-                row-index: i;
-                toggle-mute(idx) => { root.toggle-mute(idx); }
-                opacity-changed(idx, v) => { root.set-opacity(idx, v); }
-            }
-        }
-
-        // 4. Sources groupées par type, scroll horizontal par ligne
-        Rectangle {
-            height: 140px;
-            background: #1f2024;
-
-            VerticalLayout {
-                padding: 8px;
-                spacing: 8px;
-
-                HorizontalLayout {
+                VerticalLayout {
+                    width: 300px;
                     spacing: 8px;
-                    Text { text: "Kyber"; color: #8a8d94; width: 70px; vertical-alignment: center; }
-                    Flickable {
-                        HorizontalLayout {
-                            spacing: 8px;
-                            for name in root.kyber-sources: SourceChip { label: name; }
+
+                    HorizontalLayout {
+                        spacing: 4px;
+                        for mode in root.transition-modes: TouchButton {
+                            label: mode;
+                            btn-width: 70px;
+                            btn-height: 56px;
+                            active: root.transition-mode == mode;
+                            clicked => { root.trigger-transition(mode); }
                         }
                     }
+
+                    Slider {
+                        height: 48px;
+                        minimum: 0;
+                        maximum: 1;
+                        value: root.tbar-position;
+                        changed(v) => { root.set-tbar(v); }
+                    }
+
+                    TouchButton {
+                        label: "CUT →";
+                        btn-width: 300px;
+                        btn-height: 56px;
+                        clicked => { root.cut(); }
+                    }
                 }
-                HorizontalLayout {
+            }
+
+            // 3. Pile de layers (haut = dessus), scroll indépendant
+            Text {
+                text: "LAYERS (empilement, haut = dessus)";
+                color: #8a8d94;
+                font-size: 13px;
+                x: 12px;
+            }
+
+            ListView {
+                vertical-stretch: 1;
+                for layer[i] in root.layers: LayerCard {
+                    layer: layer;
+                    row-index: i;
+                    toggle-mute(idx) => { root.toggle-mute(idx); }
+                    opacity-changed(idx, v) => { root.set-opacity(idx, v); }
+                }
+            }
+
+            // 4. Sources groupées par type, scroll horizontal par ligne
+            Rectangle {
+                height: 140px;
+                background: #1f2024;
+
+                VerticalLayout {
+                    padding: 8px;
                     spacing: 8px;
-                    Text { text: "Spout"; color: #8a8d94; width: 70px; vertical-alignment: center; }
-                    Flickable {
-                        HorizontalLayout {
-                            spacing: 8px;
-                            for name in root.spout-sources: SourceChip { label: name; }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Text { text: "Kyber"; color: #8a8d94; width: 70px; vertical-alignment: center; }
+                        Flickable {
+                            HorizontalLayout {
+                                spacing: 8px;
+                                for name in root.kyber-sources: SourceChip { label: name; }
+                            }
+                        }
+                    }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Text { text: "Spout"; color: #8a8d94; width: 70px; vertical-alignment: center; }
+                        Flickable {
+                            HorizontalLayout {
+                                spacing: 8px;
+                                for name in root.spout-sources: SourceChip { label: name; }
+                            }
                         }
                     }
                 }

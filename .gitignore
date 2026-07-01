@@ -9,3 +9,4 @@
 # never commit them — only installer/build-usb.sh + installer/VERSION are tracked.
 installer/extra-debs/*.deb
 installer/*.iso
+installer/VERSION.local

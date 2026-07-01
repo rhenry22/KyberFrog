@@ -1,0 +1,6 @@
+[submodule "third_party/kyctl"]
+	path = third_party/kyctl
+	url = git@gitlab.com:kyber-frog/kyctl.git
+[submodule "third_party/kyber-desktop"]
+	path = third_party/kyber-desktop
+	url = git@gitlab.com:kyber-frog/kyber-desktop.git

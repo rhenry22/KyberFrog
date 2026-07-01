@@ -3067,8 +3067,12 @@ dependencies = [
 name = "kyfrogmix"
 version = "0.2.2"
 dependencies = [
+ "axum",
+ "serde",
+ "serde_json",
  "slint",
  "slint-build",
+ "tokio",
 ]
 
 [[package]]
