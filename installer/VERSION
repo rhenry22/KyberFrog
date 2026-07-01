@@ -1,0 +1,28 @@
+# Paramètres du build de la clé USB Ubuntu 24.04 + drivers Blackmagic + logiciel maison
+# Ce fichier est sourcé tel quel par build-usb.sh (syntaxe shell : VAR="valeur")
+# Les chemins ci-dessous sont résolus relativement au répertoire courant au
+# moment de lancer le script (pas au dossier du script) — utiliser des
+# chemins absolus si le script n'est pas lancé depuis la racine du repo.
+
+# ISO Ubuntu Server à graver (télécharger depuis ubuntu.com/download/server)
+UBUNTU_ISO="ubuntu-24.04.3-live-server-amd64.iso"
+
+# Le périphérique USB cible n'est plus ici : il se passe en 1er argument du script
+# (ex: ./installer/build-usb.sh /dev/sdb installer/VERSION.local) — VÉRIFIER avec
+# `lsblk` avant de lancer !
+
+# Dossier local contenant les .deb à préinstaller :
+#   - driver Blackmagic Desktop Video (desktopvideo_*.deb, desktopvideo-dkms_*.deb)
+#   - ton/tes .deb logiciel(s)
+EXTRA_DEBS_DIR="installer/extra-debs"
+
+# Étiquette et taille (en Mio) de la partition autoinstall créée en fin de clé
+CIDATA_LABEL="CIDATA"
+CIDATA_SIZE_MIB="1024"
+
+# Identifiant cloud-init de cette machine/config (libre, sert juste à l'identifier)
+INSTANCE_ID="kyberfrog-station-01"
+
+# Mot de passe temporaire pour l'enrôlement MOK (Secure Boot, module DKMS non signé) —
+# à taper une seule fois à l'écran bleu "MOK Management" au premier reboot si Secure Boot actif
+MOK_PASSWORD="kyberfrog-enroll"
