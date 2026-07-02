@@ -44,6 +44,22 @@ docker run --rm -v "${PWD}:/work" -w /work kyber/debian-win64:local \
   cargo test -p kyberfrog-shared config_round_trips_both_halves
 ```
 
+**Linux target (`kyfrogmix` only).** `kyfrogmix` is the *native Linux* video
+mixer (V4L2 + Slint), so it cross-compiles to `x86_64-unknown-linux-gnu` — the
+same image already carries that target. Build only that crate (the rest of the
+workspace is Windows-only and its Win32 modules won't link for a Linux binary):
+
+```sh
+# Build the native Linux mixer → target/x86_64-unknown-linux-gnu/release/kyfrogmix
+docker run --rm -v "${PWD}:/work" -w /work kyber/debian-win64:local \
+  cargo build --release -p kyfrogmix --target x86_64-unknown-linux-gnu
+```
+
+Slint 1.13 is pinned (`kyfrogmix/Cargo.toml`, `slint = "=1.13"`) plus
+`typed-index-collections = 3.2.3` in the lock: newer Slint / that dep require
+rustc ≥ 1.90–1.92, but the image ships **rustc 1.89**. Bump the image's rustc
+(`docker-images/debian-win64/Dockerfile`) before unpinning.
+
 **UI dev loop (CSS / React changes, no Rust rebuild needed).**
 `npm` n'est pas disponible nativement sur l'hôte — utiliser Docker avec l'image
 `node:20-alpine`. Depuis `apps/KyberFrog` :
